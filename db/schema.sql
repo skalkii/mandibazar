@@ -36,9 +36,9 @@ create table if not exists price_records (
   commodity_id int references commodities(id) on delete cascade,
   variety text not null default '',
   arrival_date date not null,
-  min_price_per_quintal int,
-  max_price_per_quintal int,
-  modal_price_per_quintal int,
+  min_price_per_quintal numeric(10,2),
+  max_price_per_quintal numeric(10,2),
+  modal_price_per_quintal numeric(10,2),
   ingested_at timestamptz default now(),
   unique (mandi_id, commodity_id, variety, arrival_date)
 );
