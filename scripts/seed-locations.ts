@@ -1,4 +1,4 @@
-import "dotenv/config";
+import "./_env";
 import { ingestForDate } from "../lib/ingest";
 
 async function main() {
