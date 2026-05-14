@@ -126,9 +126,9 @@ export async function ingestForDate(date: Date): Promise<IngestResult> {
         commodity_id: commodityId,
         variety: rec.variety || "",
         arrival_date: toISODate(parsedDate),
-        min_price_per_quintal: Number.isFinite(min) ? min : null,
-        max_price_per_quintal: Number.isFinite(max) ? max : null,
-        modal_price_per_quintal: Number.isFinite(modal) ? modal : null,
+        min_price_per_quintal: Number.isFinite(min) ? Math.round(min) : null,
+        max_price_per_quintal: Number.isFinite(max) ? Math.round(max) : null,
+        modal_price_per_quintal: Number.isFinite(modal) ? Math.round(modal) : null,
       });
 
       if (batch.length >= 500) await flush();
