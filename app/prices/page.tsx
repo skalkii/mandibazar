@@ -62,8 +62,8 @@ export default async function PricesPage({
         )}
       </div>
 
-      <header className="flex flex-col gap-1">
-        <h1 className="text-2xl sm:text-3xl md:text-4xl font-bold tracking-tight">
+      <header className="flex flex-col gap-1.5">
+        <h1 className="font-serif text-3xl sm:text-4xl md:text-5xl font-medium tracking-tight leading-tight">
           {commodity}
         </h1>
         <p className="text-sm sm:text-base text-muted-foreground">
