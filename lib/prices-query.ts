@@ -16,53 +16,67 @@ type Row = {
 };
 
 export type PricesQueryResult = {
-  commodity: string;
-  state: string | null;
-  district: string | null;
+  commodities: string[];
+  states: string[];
+  districts: string[];
   latest_date: string | null;
   prices: PriceRow[];
+  byCommodity: Record<string, PriceRow[]>;
 };
 
 export async function queryPrices(opts: {
-  commodity: string;
-  state?: string;
-  district?: string;
+  commodities: string[];
+  states?: string[];
+  districts?: string[];
   limit?: number;
 }): Promise<PricesQueryResult> {
-  const limit = Math.min(opts.limit ?? 50, 50);
+  const limit = Math.min(opts.limit ?? 100, 200);
   const sb = getBrowserSupabase();
 
-  const { data: commodityRow } = await sb
-    .from("commodities")
-    .select("id, canonical_name")
-    .eq("canonical_name", opts.commodity)
-    .maybeSingle();
-
-  if (!commodityRow) {
+  if (opts.commodities.length === 0) {
     return {
-      commodity: opts.commodity,
-      state: opts.state ?? null,
-      district: opts.district ?? null,
+      commodities: [],
+      states: opts.states ?? [],
+      districts: opts.districts ?? [],
       latest_date: null,
       prices: [],
+      byCommodity: {},
+    };
+  }
+
+  const { data: commodityRows, error: cErr } = await sb
+    .from("commodities")
+    .select("id, canonical_name")
+    .in("canonical_name", opts.commodities);
+  if (cErr) throw cErr;
+  const commodityIds = (commodityRows ?? []).map((r) => r.id);
+  if (commodityIds.length === 0) {
+    return {
+      commodities: opts.commodities,
+      states: opts.states ?? [],
+      districts: opts.districts ?? [],
+      latest_date: null,
+      prices: [],
+      byCommodity: {},
     };
   }
 
   const { data: latest } = await sb
     .from("price_records")
     .select("arrival_date")
-    .eq("commodity_id", commodityRow.id)
+    .in("commodity_id", commodityIds)
     .order("arrival_date", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   if (!latest) {
     return {
-      commodity: commodityRow.canonical_name,
-      state: opts.state ?? null,
-      district: opts.district ?? null,
+      commodities: opts.commodities,
+      states: opts.states ?? [],
+      districts: opts.districts ?? [],
       latest_date: null,
       prices: [],
+      byCommodity: {},
     };
   }
 
@@ -74,13 +88,17 @@ export async function queryPrices(opts: {
        commodities!inner(canonical_name),
        mandis!inner(name, districts!inner(name, states!inner(name)))`,
     )
-    .eq("commodity_id", commodityRow.id)
+    .in("commodity_id", commodityIds)
     .eq("arrival_date", latest.arrival_date)
     .order("modal_price_per_quintal", { ascending: false })
     .limit(limit);
 
-  if (opts.state) q = q.eq("mandis.districts.states.name", opts.state);
-  if (opts.district) q = q.eq("mandis.districts.name", opts.district);
+  if (opts.states && opts.states.length > 0) {
+    q = q.in("mandis.districts.states.name", opts.states);
+  }
+  if (opts.districts && opts.districts.length > 0) {
+    q = q.in("mandis.districts.name", opts.districts);
+  }
 
   const { data, error } = await q.returns<Row[]>();
   if (error) throw error;
@@ -99,11 +117,17 @@ export async function queryPrices(opts: {
       modal_per_kg: quintalToKg(r.modal_price_per_quintal ?? 0),
     }));
 
+  const byCommodity: Record<string, PriceRow[]> = {};
+  for (const p of prices) {
+    (byCommodity[p.commodity] ??= []).push(p);
+  }
+
   return {
-    commodity: commodityRow.canonical_name,
-    state: opts.state ?? null,
-    district: opts.district ?? null,
+    commodities: opts.commodities,
+    states: opts.states ?? [],
+    districts: opts.districts ?? [],
     latest_date: latest.arrival_date,
     prices,
+    byCommodity,
   };
 }

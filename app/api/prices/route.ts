@@ -6,17 +6,17 @@ export const dynamic = "force-dynamic";
 
 export async function GET(request: Request) {
   const url = new URL(request.url);
-  const commodity = url.searchParams.get("commodity");
-  const state = url.searchParams.get("state") ?? undefined;
-  const district = url.searchParams.get("district") ?? undefined;
-  const limit = Number(url.searchParams.get("limit") ?? 50);
+  const commodities = url.searchParams.getAll("commodity");
+  const states = url.searchParams.getAll("state");
+  const districts = url.searchParams.getAll("district");
+  const limit = Number(url.searchParams.get("limit") ?? 100);
 
-  if (!commodity) {
+  if (commodities.length === 0) {
     return NextResponse.json({ error: "commodity is required" }, { status: 400 });
   }
 
   try {
-    const result = await queryPrices({ commodity, state, district, limit });
+    const result = await queryPrices({ commodities, states, districts, limit });
     return NextResponse.json({ ...result, count: result.prices.length });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);

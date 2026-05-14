@@ -4,38 +4,35 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { ArrowRight, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { MultiSelect } from "@/components/MultiSelect";
 import type { Dictionary } from "@/lib/i18n/dictionaries";
-
-const ANY_STATE = "__any__";
 
 type Props = {
   commodities: string[];
   states: string[];
   dict: Dictionary;
-  initial?: { commodity?: string; state?: string };
+  initial?: { commodities?: string[]; states?: string[] };
 };
 
 export function PickerForm({ commodities, states, dict, initial }: Props) {
   const router = useRouter();
-  const [commodity, setCommodity] = useState(initial?.commodity ?? "");
-  const [state, setState] = useState(initial?.state ?? ANY_STATE);
+  const [pickedCommodities, setPickedCommodities] = useState<string[]>(
+    initial?.commodities ?? [],
+  );
+  const [pickedStates, setPickedStates] = useState<string[]>(
+    initial?.states ?? [],
+  );
   const [pending, startTransition] = useTransition();
 
-  const canSubmit = Boolean(commodity) && !pending;
+  const canSubmit = pickedCommodities.length > 0 && !pending;
 
   function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!canSubmit) return;
-    const params = new URLSearchParams({ commodity });
-    if (state && state !== ANY_STATE) params.set("state", state);
+    const params = new URLSearchParams();
+    for (const c of pickedCommodities) params.append("commodity", c);
+    for (const s of pickedStates) params.append("state", s);
     startTransition(() => {
       router.push(`/prices?${params.toString()}`);
     });
@@ -50,45 +47,32 @@ export function PickerForm({ commodities, states, dict, initial }: Props) {
         <Label htmlFor="commodity" className="text-sm font-medium">
           {dict.pick_commodity}
         </Label>
-        <Select value={commodity} onValueChange={setCommodity}>
-          <SelectTrigger id="commodity" className="h-12 text-base">
-            <SelectValue placeholder={dict.pick_commodity_placeholder} />
-          </SelectTrigger>
-          <SelectContent className="max-h-80">
-            {commodities.length === 0 ? (
-              <SelectItem value="__empty__" disabled>
-                {dict.no_commodities}
-              </SelectItem>
-            ) : (
-              commodities.map((c) => (
-                <SelectItem key={c} value={c} className="text-base">
-                  {c}
-                </SelectItem>
-              ))
-            )}
-          </SelectContent>
-        </Select>
+        <MultiSelect
+          id="commodity"
+          options={commodities}
+          value={pickedCommodities}
+          onChange={setPickedCommodities}
+          placeholder={dict.pick_commodity_placeholder}
+          searchPlaceholder={dict.pick_commodity}
+          emptyLabel={dict.no_commodities}
+          ariaLabel={dict.pick_commodity}
+        />
       </div>
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="state" className="text-sm font-medium">
           {dict.state_optional}
         </Label>
-        <Select value={state} onValueChange={setState}>
-          <SelectTrigger id="state" className="h-12 text-base">
-            <SelectValue placeholder={dict.all_states} />
-          </SelectTrigger>
-          <SelectContent className="max-h-80">
-            <SelectItem value={ANY_STATE} className="text-base">
-              {dict.all_states}
-            </SelectItem>
-            {states.map((s) => (
-              <SelectItem key={s} value={s} className="text-base">
-                {s}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <MultiSelect
+          id="state"
+          options={states}
+          value={pickedStates}
+          onChange={setPickedStates}
+          placeholder={dict.all_states}
+          searchPlaceholder={dict.state}
+          emptyLabel={dict.no_data}
+          ariaLabel={dict.state}
+        />
       </div>
 
       <Button
