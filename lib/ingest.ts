@@ -87,14 +87,20 @@ export async function ingestForDate(date: Date): Promise<IngestResult> {
 
   const flush = async () => {
     if (!batch.length) return;
+    const deduped = new Map<string, Record<string, unknown>>();
+    for (const row of batch) {
+      const key = `${row.mandi_id}|${row.commodity_id}|${row.variety}|${row.arrival_date}`;
+      deduped.set(key, row);
+    }
+    const rows = Array.from(deduped.values());
     const { error } = await supabase
       .from("price_records")
-      .upsert(batch, { onConflict: "mandi_id,commodity_id,variety,arrival_date" });
+      .upsert(rows, { onConflict: "mandi_id,commodity_id,variety,arrival_date" });
     if (error) {
-      result.errors += batch.length;
+      result.errors += rows.length;
       console.error("price upsert error", error);
     } else {
-      result.upserted += batch.length;
+      result.upserted += rows.length;
     }
     batch.length = 0;
   };
